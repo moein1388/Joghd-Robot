@@ -1,92 +1,88 @@
 import os
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 import random
+from telegram import Update
+from telegram.ext import (
+    ApplicationBuilder,
+    MessageHandler,
+    ContextTypes,
+    CommandHandler,
+    filters,
+    ChatMemberHandler
+)
 
-# جوک‌ها و پاسخ‌ها
+BOT_TOKEN = os.getenv("BOT_TOKEN")  # توی رندر به عنوان secret environment تعریف کن
+
+# لیست جوک‌ها و ایده‌ها
 jokes = [
-    "می‌دونی چرا مرغ از خیابون رد شد؟ چون اون طرفش اینترنت رایگان بود!",
-    "یه بار یه گوسفند رفت دانشگاه، استاد شد!",
-    "یه ربات دیدم انقدر باهوش بود خودش رو خاموش کرد که با آدم‌ها بحث نکنه!",
+    "یه ربات رفتم سر کار، گفتن چرا اینقدر آهنی هستی؟ گفتم رباتم دیگه!",
+    "به یه ربات گفتم سلام، گفت سلامتی هم نباشه آدم نمیشه!",
+    "وقتی کامپیوتر عاشق بشه، دلش از رم می‌ره!",
+]
+ideas = [
+    "بیاید چالش عکس پروفایل بذاریم!",
+    "بازی بله/خیر توی گروه راه بندازیم؟",
+    "هرکی یه حقیقت بگه که کمتر کسی بدونه!",
 ]
 
-answers = {
-    "چه خبر": "سلامتی! تو چه خبر؟ 😄",
-    "خوبی": "مرسی که پرسیدی! همیشه خوبم اگه گروه خوب باشه!",
-    "جوک بگو": lambda: random.choice(jokes),
-    "سلام": "سلام رفیق! خوش اومدی! 🌟",
-}
+active = True  # وضعیت فعال یا خاموش بودن ربات
 
-# حالت فعال یا غیرفعال
-ACTIVE = True
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "سلام! من جغدی‌ام 🦉\n"
-        "فقط وقتی پیامت با «جغدی» شروع بشه جواب می‌دم.\n"
-        "دستورها:\n"
-        "- joghdi khamoosh (خاموش می‌کنم خودمو)\n"
-        "- joghdi roshan (دوباره فعال می‌شم)"
-    )
-
-async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global ACTIVE
-    text = update.message.text.lower()
-
-    if not text.startswith("joghdi"):
-        return  # فقط به پیام‌هایی که با "جغدی" شروع میشن جواب می‌ده
-
-    command = text[6:].strip()  # حذف "joghdi"
-
-    if "khamoosh" in command:
-        ACTIVE = False
-        await update.message.reply_text("چشم، ساکت می‌مونم. 💤")
-        return
-
-    if "roshan" in command:
-        ACTIVE = True
-        await update.message.reply_text("من برگشتم! 🦉")
-        return
-
-    if not ACTIVE:
-        return
-
-    # پاسخ دادن به دستورات ساده
-    for key in answers:
-        if key in command:
-            response = answers[key]
-            if callable(response):
-                response = response()
-            await update.message.reply_text(response)
-            return
-
-    # اگه نفهمید، هیچ چی نمی‌گه
-    return
-
+# وقتی عضو جدید وارد گروه میشه
 async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    for member in update.message.new_chat_members:
-        await update.message.reply_text(
-            f"به گروه خوش اومدی {member.first_name}!\n"
-            "من جغدی‌ام 🦉، اگه خواستی باهام حرف بزنی اول پیام بگو: joghdi\n"
-            "مثلاً:\n"
-            "- joghdi جوک بگو\n"
-            "- joghdi چه خبر\n"
-            "- joghdi khamoosh / roshan"
+    for member in update.chat_member.new_chat_members:
+        await context.bot.send_message(
+            chat_id=update.chat_member.chat.id,
+            text=f"""🌟 خوش اومدی {member.full_name}!
+من جغدی هستم 🦉
+
+دستورهای من:
+- بگو: جغدی یه جوک بگو
+- بگو: جغدی یه ایده بده
+- خاموشم کن: khamoosh
+- روشنم کن: roshaan
+
+فقط وقتی اول پیام بنویسی "جغدی" جواب می‌دم!
+"""
         )
 
-def main():
-    TOKEN = os.environ.get("BOT_TOKEN")
-    if not TOKEN:
-        print("Please set your BOT_TOKEN environment variable.")
+# پیام‌های معمولی
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global active
+    msg = update.message.text.strip().lower()
+
+    if msg == "khamoosh":
+        active = False
+        await update.message.reply_text("🦉 جغدی خاموش شد!")
         return
 
-    app = ApplicationBuilder().token(TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome))
-    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), message_handler))
+    if msg == "roshaan":
+        active = True
+        await update.message.reply_text("🦉 جغدی دوباره روشن شد!")
+        return
 
-    print("Bot is running...")
-    app.run_polling()
+    if not active:
+        return
+
+    if not msg.startswith("جغدی"):
+        return
+
+    # حذف کلمه "جغدی" از اول پیام
+    content = msg.replace("جغدی", "", 1).strip()
+
+    if "جوک" in content:
+        await update.message.reply_text(random.choice(jokes))
+    elif "ایده" in content:
+        await update.message.reply_text(random.choice(ideas))
+    elif "سلام" in content:
+        await update.message.reply_text("سلام رفیق! جغدی در خدمتته 🦉")
+    elif "چه خبر" in content:
+        await update.message.reply_text("همه چی آرومه، تو خوبی؟")
+    else:
+        # چیزی نگه اگه متوجه نشد
+        return
+
 
 if __name__ == "__main__":
-    main()
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    app.add_handler(ChatMemberHandler(welcome, ChatMemberHandler.CHAT_MEMBER))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.run_polling()
