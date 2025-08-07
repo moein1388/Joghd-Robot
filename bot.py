@@ -1,83 +1,65 @@
-from telegram import Update, Poll, InputFile
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
-import random
 import os
+from dotenv import load_dotenv
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+from brain import get_chatgpt_reply, load_memory, save_memory
+import datetime
 
-# ✅ توکن ربات
-TOKEN = '123456789:ABCDEFghijklmnop_YOUR_REAL_TOKEN_HERE'
+load_dotenv()
 
-# 🎭 لیست پاسخ‌های مختلف
-greetings = ["سلام بر جغد شب‌زنده‌دار 🌙", "درود بر تو جغد عزیز 🦉", "سلام رفیق جغدی 😄"]
-funny_responses = [
-    "الان وقت جغد بودنه یا فسفر سوزوندن؟ 🦉",
-    "تو جغدی یا انسان نمای شب‌زنده‌دار؟ 😂",
-    "سوری بیا ببین کی اومده! 😏",
-    "باز تو اومدی؟ من آماده‌م برای شوخی! 😎"
-]
-questions_responses = [
-    "سوالی بود؟ من همیشه پایه‌ام برای جواب 🎓",
-    "بپرس عزیز دل، جغدها باس باس باشن 😌",
-    "شاید بلد نباشم ولی تلاشمو می‌کنم 🧠"
-]
-unknown_responses = [
-    "🧠 هنوز دارم یاد می‌گیرم، ولی سعی می‌کنم بفهمم چی گفتی!",
-    "من نفهمیدم دقیق چی گفتی ولی خوشم اومد از حرفت 😄",
-    "یه بار دیگه بگو، انگار حافظه‌م پر بود 😂"
-]
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+memory = load_memory()
 
-# 🎬 فرمان /start
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("سلام! من ربات جغد مودبم 🦉 آماده‌ام برای چت، شوخی، رأی‌گیری و سرگرمی!")
-
-# 📝 هندلر اصلی پیام‌ها
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text.lower()
-    user = update.message.from_user.first_name or "رفیق"
-
-    # پاسخ به سلام
-    if 'سلام' in text:
-        await update.message.reply_text(random.choice(greetings), reply_to_message_id=update.message.message_id)
-
-    # شوخی با اسم جغد یا سوری
-    elif 'جغد' in text or 'سوری' in text:
-        await update.message.reply_text(random.choice(funny_responses), reply_to_message_id=update.message.message_id)
-
-    # رأی‌گیری
-    elif 'رای‌گیری' in text or 'رأی‌گیری' in text:
-        await update.message.reply_poll(
-            question=f"{user} یه رأی‌گیری راه انداخت 🗳️",
-            options=["آره", "نه", "بی‌خیال"],
-            is_anonymous=False,
-        )
-
-    # بیدار بودن
-    elif 'کی بیداره' in text or 'کی آنلاینه' in text:
-        await update.message.reply_text("من بیدارم 😎 جغد شب‌زنده‌دار هیچوقت نمی‌خوابه!")
-
-    # درخواست استیکر
-    elif 'استیکر بده' in text or 'استیکر بفرست' in text:
-        await update.message.reply_sticker("CAACAgUAAxkBAAEBJxZkZJNmX8r3oD5zAq-6EVrJIXsAASsAAp5QGFWkiu5nL0ewDzUE")
-
-    # درخواست ویس
-    elif 'ویس بده' in text or 'صدا بفرست' in text:
-        voice_path = "voice.ogg"
-        if os.path.exists(voice_path):
-            await update.message.reply_voice(voice=InputFile(voice_path), caption="ویس جغدی 🎤🦉")
-        else:
-            await update.message.reply_text("فعلاً ویس ندارم 😢 یه فایل voice.ogg کنارم بذار")
-
-    # اگر جمله سوالی بود (علامت سوال)
-    elif '?' in text or '؟' in text:
-        await update.message.reply_text(random.choice(questions_responses), reply_to_message_id=update.message.message_id)
-
-    # در غیر این صورت
+def get_greeting():
+    hour = datetime.datetime.now().hour
+    if 5 <= hour < 11:
+        return "صبحت بخیر جغد جان... فقط من هنوز خوابم میاد 😴"
+    elif 11 <= hour < 17:
+        return "ظهر شد! وقت فسفر سوزوندنه 🔥🧠"
+    elif 17 <= hour < 21:
+        return "عصر بخیر! یه گپ جغدی بزنیم؟ 🦉"
     else:
-        await update.message.reply_text(random.choice(unknown_responses), reply_to_message_id=update.message.message_id)
+        return "شب شد... وقت پر زدن جغدی 🦉🌌"
 
-# 🚀 اجرای ربات
-app = ApplicationBuilder().token(TOKEN).build()
-app.add_handler(CommandHandler("start", start))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.message.from_user.id)
+    user_name = update.message.from_user.first_name
+    memory[user_id] = {"name": user_name}
+    save_memory(memory)
+    
+    greeting = get_greeting()
+    await update.message.reply_text(
+        f"سلام {user_name} عزیز! من جغد مودب و باهوشم 🤖🦉\n{greeting}"
+    )
 
-print("✅ ربات جغد مودب هوشمند آماده است!")
-app.run_polling()
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = str(update.message.from_user.id)
+    user_message = update.message.text.strip()
+    
+    # یادگیری نام
+    if user_id not in memory:
+        memory[user_id] = {"name": update.message.from_user.first_name}
+        save_memory(memory)
+    
+    user_name = memory[user_id]["name"]
+
+    # اگر گفت "اسم من ..."
+    if user_message.startswith("اسم من") or "منو صدا بزن" in user_message:
+        name = user_message.split()[-1]
+        memory[user_id]["name"] = name
+        save_memory(memory)
+        await update.message.reply_text(f"حتماً! از این به بعد صدات می‌زنم {name} 🌟")
+        return
+
+    await update.message.chat.send_action(action="typing")
+    response = get_chatgpt_reply(user_name, user_message)
+    await update.message.reply_text(response)
+
+if name == 'main':
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+    print("✅ ربات جغد متفکر راه افتاد...")
+    app.run_polling()
