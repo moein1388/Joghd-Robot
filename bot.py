@@ -8,16 +8,21 @@ from telegram.ext import (
 )
 import random
 import os
-from openai import OpenAI
+import openai  # تغییر اینجا
 
-# ======= تنظیمات کلیدها =======
+# بارگذاری متغیرهای محیطی (اگر از dotenv استفاده می‌کنی)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")  # کلید Groq رو باید در محیط بذاری
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-# ======= کلاینت Groq =======
-client = OpenAI(api_key=GROQ_API_KEY, base_url="https://api.groq.com/openai/v1")
+openai.api_key = GROQ_API_KEY
+openai.api_base = "https://api.groq.com/openai/v1"  # آدرس پایه API گراگ
 
-# ======= پاسخ‌های اولیه و ثابت =======
 greetings = ["سلام بر جغد شب‌زنده‌دار 🌙", "درود بر تو جغد عزیز 🦉", "سلام رفیق جغدی 😄"]
 funny_responses = [
     "الان وقت جغد بودنه یا فسفر سوزوندن؟ 🦉",
@@ -36,38 +41,31 @@ unknown_responses = [
     "یه بار دیگه بگو، انگار حافظه‌م پر بود 😂",
 ]
 
-# ======= تابع دریافت پاسخ هوشمند از Groq =======
 async def get_groq_response(user_message: str) -> str:
     try:
-        response = client.chat.completions.create(
+        response = openai.ChatCompletion.create(
             model="llama3-70b-8192",
             messages=[
-                {
-                    "role": "system",
-                    "content": "تو یه ربات تلگرام هستی که با آدم‌ها مودبانه، شوخ و دوستانه چت می‌کنی."
-                },
-                {"role": "user", "content": user_message}
+                {"role": "system", "content": "تو یه ربات مودب و شوخ تلگرام هستی."},
+                {"role": "user", "content": user_message},
             ],
             temperature=0.7,
             max_tokens=150,
         )
-        return response.choices[0].message.content
+        return response.choices[0].message['content']
     except Exception as e:
         print(f"خطا در ارتباط با Groq: {e}")
         return "متأسفم الان نمی‌تونم جواب بدم!"
 
-# ======= هندلر شروع /start =======
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "سلام! من ربات جغد مودبم 🦉 آماده‌ام برای چت، شوخی، رأی‌گیری و سرگرمی!"
     )
 
-# ======= هندلر اصلی پیام‌ها =======
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     user = update.message.from_user.first_name or "رفیق"
 
-    # فرمان‌های ثابت
     if "استیکر بده" in text or "استیکر بفرست" in text:
         await update.message.reply_sticker(
             "CAACAgUAAxkBAAEBJxZkZJNmX8r3oD5zAq-6EVrJIXsAASsAAp5QGFWkiu5nL0ewDzUE"
@@ -100,11 +98,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(random.choice(greetings))
         return
 
-    # پاسخ هوشمندانه به سایر پیام‌ها
     bot_reply = await get_groq_response(text)
     await update.message.reply_text(bot_reply, reply_to_message_id=update.message.message_id)
 
-# ======= اجرای ربات =======
 if name == "__main__":
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
