@@ -33,8 +33,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("متاسفم، الان نمی‌تونم جواب بدم 😔")
         print(f"Error: {e}")
 
-if name == "__main__":
+if __name__ == "__main__":
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
     print("Bot is running...")
     app.run_polling()
+
