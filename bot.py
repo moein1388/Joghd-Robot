@@ -10,7 +10,7 @@ import random
 import os
 
 # ✅ توکن ربات
-TOKEN = "123456789:ABCDEFghijklmnop_YOUR_REAL_TOKEN_HERE"
+TOKEN = "8350519810:AAGneRC9rpyiEs1kwagmlTvca3yNQrbamIA"
 
 # 🎭 لیست پاسخ‌های مختلف
 greetings = ["سلام بر جغد شب‌زنده‌دار 🌙", "درود بر تو جغد عزیز 🦉", "سلام رفیق جغدی 😄"]
@@ -109,3 +109,4 @@ app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
 print("✅ ربات جغد مودب هوشمند آماده است!")
 app.run_polling()
+
