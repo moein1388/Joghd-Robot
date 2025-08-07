@@ -7,7 +7,7 @@ from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filte
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-openai.api_key = OPENAI_API_KEY
+openai.api_key = OPENAI_API_KEYnbnb
 
 # پرامپت اختصاصی برای شخصیت ربات
 DEFAULT_PROMPT = """
@@ -38,4 +38,5 @@ if __name__ == "__main__":
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
     print("Bot is running...")
     app.run_polling()
+
 
